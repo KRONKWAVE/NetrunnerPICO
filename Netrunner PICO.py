@@ -199,6 +199,7 @@ def set_runner():
     "Brain Damage": 0
     }
     clear()
+    display.set_led(255, 0, 0)
     utime.sleep(1)
 
 # sets your ident to corp and resets the dictionary
@@ -213,6 +214,7 @@ def set_corp():
     "Credits": 5,
     "Bad Publicity": 0
     }
+    display.set_led(0, 0, 255)
     clear()
     utime.sleep(1)
 
@@ -223,6 +225,7 @@ def set_NBN():
     global identPen
     identPen = 1
     clear()
+    display.set_led(242,202,80)
     utime.sleep(1)
 
 # sets your pen colour to match HB
@@ -232,6 +235,7 @@ def set_HB():
     global identPen
     identPen = 2
     clear()
+    display.set_led(127,116,168)
     utime.sleep(1)
 
 # sets your pen colour to match Jinteki
@@ -241,6 +245,7 @@ def set_JNTK():
     global identPen
     identPen = 3
     clear()
+    display.set_led(150,27,36)
     utime.sleep(1)
     
 # sets your pen colour to match Weyland
@@ -250,6 +255,7 @@ def set_WLND():
     global identPen
     identPen = 4
     clear()
+    display.set_led(57,115,94)
     utime.sleep(1)
 
 # sets your pen colour to match Criminal
@@ -259,6 +265,7 @@ def set_CRIM():
     global identPen
     identPen = 5
     clear()
+    display.set_led(96,147,222)
     utime.sleep(1)
     
 # sets your pen colour to match Anarch
@@ -268,6 +275,7 @@ def set_ANAR():
     global identPen
     identPen = 6
     clear()
+    display.set_led(242,109,61)
     utime.sleep(1)
     
 # sets your pen colour to match Shaper
@@ -277,6 +285,7 @@ def set_SHPR():
     global identPen
     identPen = 7
     clear()
+    display.set_led(96,181,78)
     utime.sleep(1)
 
 # sets the pen colour based on the identity
@@ -597,12 +606,18 @@ clear()
 # opening menu screen, here you choose whether you want to track stats for Corp or Runner
 while ident == 2:
     display.set_pen(blue)
-    display.text("CORP", 80, 10,240, 4)
+    display.text("CORP", 80, 10, 240, 4)
     display.set_pen(white)
-    display.text("OR", 101, 60,240, 4)
+    display.text("OR", 101, 60, 240, 4)
     display.set_pen(red)
-    display.text("RUNNER", 53, 110,240, 4)
+    display.text("RUNNER", 53, 100, 240, 4)
     display.update()
+    display.set_led(255,0,0) # Set the LED to bright red
+    utime.sleep(1) # Wait for 1 second
+    display.set_led(0,255,0) # Set the LED to bright green
+    utime.sleep(1) # Wait for 1 second
+    display.set_led(0,0,255) # Set the LED to bright blue
+    utime.sleep(1) # Wait for 1 second
     if display.is_pressed(display.BUTTON_A):
         set_corp()
     if display.is_pressed(display.BUTTON_X):
