@@ -1,18 +1,27 @@
-# Standard boiler plate code to initialise the PIMORONI PICO Display Pack
+# Contents:
+# 1. Initialising the Pimoroni PicoDisplay
+# 2. Defining variables etc
+# 3. Defining functions
+# 4. The main loop which executes the code
+
+# Initialise the display
+
 # Import the PICO Display
 import picodisplay as display
 import utime
 
-# Initialise display with a bytearray display buffer
+# Initialise display with a bytearray display buffer, 2 bytes per pixel (RGB565)
 display_buffer = bytearray(display.get_width() * display.get_height() * 2)
 display.init(display_buffer)
 
-# Set the backlight
+# Set the backlight brightness
 display.set_backlight(0.5)
+
 
 # Define global variables
 
-# Time stuff for 60fps
+
+# Define the time for the renderloop
 current_time = utime.ticks_ms()
 frame_rate = 60
 
@@ -35,7 +44,7 @@ corp = {
 # 0 is clicks, 1 is credits, 2 is tags/bad publicity, 3 is brain damage
 selector = 0
 
-# Ident determines wether you're a corp or runner
+# ident determines whether you're a corp or runner
 # 0 means you're the runner, 1 means you're the corp, 2 means you have yet to select and are on the main menu screen
 ident = 2
 
@@ -43,32 +52,83 @@ ident = 2
 # 0 means the select ident submenu is not shown, 1 means it is
 submenu = 0
 
-# ident_pen determines the colour of your pen and RGB
-# 0 is undefined, 1 is NBN, 2 is HB, 3 is JNTK, 4 is WLND, 5 is CRIM, 6 is ANAR, 7 is SHPR
+# ident_pen determines the colour of your pen and the LED
+# 0 is undefined, 1 is NBN, 2 is HB, 3 is jinteki, 4 is weyland, 5 is criminal, 6 is anarch, 7 is shaper
 ident_pen = 0
 
-# define the colour of the pen for each ident 
+# define pen colours including specific colours for each ident 
+black = display.create_pen(0, 0, 0)
 white = display.create_pen(255, 255, 255)
 blue = display.create_pen(0, 0, 255)
 red = display.create_pen(255, 0, 0)
 HB = display.create_pen(127,116,168)
 NBN = display.create_pen(242,202,80)
-JNTK = display.create_pen(150,27,36)
-WLND = display.create_pen(57,115,94)
-CRIM = display.create_pen(96,147,222)
-ANAR = display.create_pen(242,109,61)
-SHPR = display.create_pen(96,181,78)
+jinteki = display.create_pen(150,27,36)
+weyland = display.create_pen(57,115,94)
+criminal = display.create_pen(96,147,222)
+anarch = display.create_pen(242,109,61)
+shaper = display.create_pen(96,181,78)
 
 
-#define functions
+# Define functions
 
-# clears the screen to black
+
+# Defines the button class, checks for when the button is first pressed, just released, and continually pressed
+class Button:
+    
+    button = display.BUTTON_X
+    button_bounce_threshold = 0
+    button_bounce_value = 0
+    previous_button_value = False
+    current_button_value = False
+    
+    def __init__(self, BUTTON, bounce_threshold):
+        self.button = BUTTON
+        self.button_bounce_threshold = bounce_threshold
+    
+    def button_just_pressed(self):
+        return self.previous_button_value == False and self.current_button_value == True
+        
+    def button_pressed(self):
+        return self.current_button_value == True
+        
+    def button_released(self):
+        return self.current_button_value == False
+        
+    def button_just_released(self):
+        return self.previous_button_value == True and self.current_button_value == False
+    
+    def update_button_state(self):
+        if self.button_bounce_value < self.button_bounce_threshold:
+            if display.is_pressed(self.button) != self.current_button_value:
+                self.button_bounce_value += 1
+            else:
+                self.button_bounce_value = 0
+        else:
+            self.previous_button_value = self.current_button_value
+            self.current_button_value = display.is_pressed(self.button)
+
+# Define the buttons
+# A button
+button_a = Button(display.BUTTON_A, 2)
+
+# B button
+button_b = Button(display.BUTTON_B, 2)
+
+# X button
+button_x = Button(display.BUTTON_X, 2)
+
+# Y button
+button_y = Button(display.BUTTON_Y, 2)
+
+
+# Clears the screen to black
 def clear():
-    display.set_pen(0, 0, 0)
+    display.set_pen(black)
     display.clear()
     display.update()
 
-# increases the click counter - loops at 4 back to 0
+# Increases the click counter for the runner - counts up from 0 to 4 and loops from 4 to 0
 def runner_increment_click():
     global runner
     if runner["Click"]<4:
@@ -76,7 +136,7 @@ def runner_increment_click():
     else:
         runner["Click"] = 0
 
-# decrease the click counter, does not cycle from 0 to max
+# Decreases the click counter for the runner - counts down from current value to 0; does not loop from 0 to 4
 def runner_decrement_click():
     global runner
     if runner["Click"] > 0:
@@ -84,12 +144,12 @@ def runner_decrement_click():
     else:
         runner["Click"] = 0
 
-# increments the credits for the Runner dictionary
+# Increments the credits for the runner dictionary
 def runner_increment_credit():
     global runner
     runner["Credits"] += 1
 
-# decrements the credits for the Runner dictionary - does not go below 0
+# Decrements the credits for the runner dictionary - does not go below 0
 def runner_decrement_credit():
     global runner
     if runner["Credits"] > 0:
@@ -97,7 +157,7 @@ def runner_decrement_credit():
     else:
         runner["Credits"] = 0
 
-# increases the clicks for the corp - loops at 3 back to 0
+# Increases the click counter for the corp - counts up from 0 to 3 and loops from 3 to 0
 def corp_increment_click():
     global corp
     if corp["Click"]<3:
@@ -105,7 +165,7 @@ def corp_increment_click():
     else:
         corp["Click"] = 0
 
-# decreases the clicks for the corp - does not go from 0 to 3
+# Decreases the click counter for the corp - counts down from current value to 0; does not loop from 0 to 3
 def corp_decrement_click():
     global corp
     if corp["Click"] > 0:
@@ -113,12 +173,12 @@ def corp_decrement_click():
     else:
         corp["Click"] = 0
 
-# increases the credits in the corp dictionary
+# Increases the credits for the corp dictionary
 def corp_increment_credit():
     global corp
-    corp["Credits"] += 1
+    corp["Credits"] += 1    
 
-# decreases the credits in the corp dictionary - does not go below 0
+# Decreases the credits for the corp dictionary - does not go below 0
 def corp_decrement_credit():
     global corp
     if corp["Credits"] > 0:
@@ -126,12 +186,12 @@ def corp_decrement_credit():
     else:
         corp["Credits"] = 0
 
-# increases the tags in runner dictionary
+# Increases the tags for the runner dictionary
 def increment_tag():
     global runner
     runner["Tags"] += 1
 
-# decreases the tags in the runner dictionary - does not go below 0
+# Decreases the tags for the runner dictionary - does not go below 0
 def decrement_tag():
     global runner
     if runner["Tags"] > 0:
@@ -139,12 +199,12 @@ def decrement_tag():
     else:
         runner["Tags"] = 0
         
-# increases the brain damage in the runner dictionary
+# Increases the brain damage for the runner dictionary
 def increment_brain_damage():
     global runner
     runner["Brain Damage"] += 1
 
-# decreases the brain damage in the runner dictionary - does not go below 0
+# Decreases the brain damage for the runner dictionary - does not go below 0
 def decrement_brain_damage():
     global runner
     if runner["Brain Damage"] > 0:
@@ -152,12 +212,12 @@ def decrement_brain_damage():
     else:
         runner["Brain Damage"] = 0
 
-# increases the bad publicity in the corp dictionary
+# Increases the bad publicity for the corp dictionary
 def increment_bad_publicity():
     global corp
     corp["Bad Publicity"] += 1
 
-# decreases the bad publicity in the corp dictionary - does not go below 0
+# Decreases the bad publicity for the corp dictionary - does not go below 0
 def decrement_bad_publicity():
     global corp
     if corp["Bad Publicity"] > 0:
@@ -165,8 +225,8 @@ def decrement_bad_publicity():
     else:
         corp["Bad Publicity"] = 0
 
-# increases the selector value - used to navigate the menus
-# loops at 3 for runner and at 2 for corp
+# Increases the selector value - used to navigate the menus
+# Loops at 3 for runner and at 2 for corp
 def cycle_up_selector():
     global selector
     global ident
@@ -181,15 +241,17 @@ def cycle_up_selector():
         else:
             selector = 0
 
-# decreases the selector value and loops to max at 0
+# Decreases the selector value and loops to max at 0 as defined by your ident
 def cycle_down_selector():
     global selector
     if selector > 0:
         selector -= 1
-    else:
+    elif ident == 0 and selector == 0:
         selector = 3
+    elif ident == 1 and selector == 0:
+        selector = 2
 
-# sets your ident to runner and resets the dictionary
+# Sets your ident to runner and resets the dictionary, also sets the state of the submenu
 def set_runner():
     global submenu
     submenu = 1
@@ -202,11 +264,10 @@ def set_runner():
     "Tags": 0,
     "Brain Damage": 0
     }
+    display.set_led(255, 0, 0)
     clear()
-    # display.set_led(255, 0, 0)
-    # utime.sleep(1)
 
-# sets your ident to corp and resets the dictionary
+# Sets your ident to corp and resets the dictionary, also sets the state of the submenu
 def set_corp():
     global submenu
     submenu = 1
@@ -220,96 +281,95 @@ def set_corp():
     }
     display.set_led(0, 0, 255)
     clear()
-    # utime.sleep(1)
 
-# sets your pen colour to match NBN
+
+# Sets your ident to NBN and your pen colour to match
 def set_NBN():
     global submenu
     submenu = 0
     global ident_pen
     ident_pen = 1
-    clear()
     display.set_led(242,202,80)
-    # utime.sleep(1)
+    clear()
 
-# sets your pen colour to match HB
+
+# Sets your ident to HB and your pen colour to match
 def set_HB():
     global submenu
     submenu = 0
     global ident_pen
     ident_pen = 2
-    clear()
     display.set_led(127,116,168)
-    # utime.sleep(1)
+    clear()
 
-# sets your pen colour to match Jinteki
-def set_JNTK():
+# Sets your ident to jinteki and your pen colour to match
+def set_jinteki():
     global submenu
     submenu = 0
     global ident_pen
     ident_pen = 3
-    clear()
     display.set_led(150,27,36)
-    # utime.sleep(1)
+    clear()
+
     
-# sets your pen colour to match Weyland
-def set_WLND():
+# Sets your ident to weyland and your pen colour to match
+def set_weyland():
     global submenu
     submenu = 0
     global ident_pen
     ident_pen = 4
-    clear()
     display.set_led(57,115,94)
-    # utime.sleep(1)
+    clear()
 
-# sets your pen colour to match Criminal
-def set_CRIM():
+
+# Sets your ident to criminal and your pen colour to match
+def set_criminal():
     global submenu
     submenu = 0
     global ident_pen
     ident_pen = 5
-    clear()
     display.set_led(96,147,222)
-    # utime.sleep(1)
+    clear()
+
     
-# sets your pen colour to match Anarch
-def set_ANAR():
+# Sets your ident to anarch and your pen colour to match
+def set_anarch():
     global submenu
     submenu = 0
     global ident_pen
     ident_pen = 6
-    clear()
     display.set_led(242,109,61)
-    # utime.sleep(1)
+    clear()
+
     
-# sets your pen colour to match Shaper
-def set_SHPR():
+# Sets your ident to shaper and your pen colour to match
+def set_shaper():
     global submenu
     submenu = 0
     global ident_pen
     ident_pen = 7
-    clear()
     display.set_led(96,181,78)
-    # utime.sleep(1)
+    clear()
 
-# sets the pen colour based on the identity
+
+# Sets the pen colour based on the identity
 def set_ident_pen():
     if ident_pen == 1:
         display.set_pen(NBN)
     elif ident_pen == 2:
         display.set_pen(HB)
     elif ident_pen == 3:
-        display.set_pen(JNTK)
+        display.set_pen(jinteki)
     elif ident_pen == 4:
-        display.set_pen(WLND)
+        display.set_pen(weyland)
     elif ident_pen == 5:
-        display.set_pen(CRIM)
+        display.set_pen(criminal)
     elif ident_pen == 6:
-        display.set_pen(ANAR)
+        display.set_pen(anarch)
     elif ident_pen == 7:
-        display.set_pen(SHPR)
+        display.set_pen(shaper)
 
-# draws the credit shape for the Runner screen
+# Draws the credit shape for the runner screen
 def runner_credit():
     display.rectangle(8, 43, 2, 14)
     display.rectangle(14, 48, 7, 9)
@@ -337,7 +397,7 @@ def runner_credit():
     display.pixel(18, 58)
     display.pixel(14, 62)
 
-# draws the credit shape for the Corp screen
+# Draws the credit shape for the corp screen
 def corp_credit():
     display.rectangle(8, 61, 2, 14)
     display.rectangle(14, 66, 7, 9)
@@ -365,7 +425,7 @@ def corp_credit():
     display.pixel(18, 76)
     display.pixel(14, 80)   
 
-# draws the tag shape for the Runner screen
+# Draws the tag shape for the runner screen
 def tag():
     display.rectangle(10, 85, 5, 5)
     display.rectangle(21, 77, 24, 2)
@@ -405,7 +465,7 @@ def tag():
     display.pixel(15, 95)
     display.pixel(4, 84)
 
-# draws the bad publicity shape for the Corp screen
+# Draws the bad publicity shape for the corp screen
 def bad_publicity():
     display.rectangle(14, 96, 2, 11)
     display.rectangle(5, 105, 9, 2)
@@ -440,7 +500,7 @@ def bad_publicity():
     display.pixel_span(12, 97, 2)
     display.pixel(13, 96)
 
-# draws the brain damage shape for the Runner screen
+# Draws the brain damage shape for the runner screen
 def brain_damage():
     display.pixel(22, 103)
     display.pixel_span(21, 104, 2)
@@ -507,7 +567,7 @@ def brain_damage():
     display.pixel(17, 125)
     display.pixel(10, 126)
 
-# draws the click shape for the Runner screen
+# Draws the click shape for the runner screen
 def runner_click():
     display.rectangle(10, 8, 14, 2)
     display.rectangle(10, 25, 14, 2)
@@ -554,7 +614,7 @@ def runner_click():
     display.pixel(11, 21)
     display.pixel(22,21)
 
-# draws the click shape for the corp screen
+# Draws the click shape for the corp screen
 def corp_click():
     display.rectangle(10, 14, 14, 2)
     display.rectangle(10, 31, 14, 2)
@@ -601,7 +661,7 @@ def corp_click():
     display.pixel(11, 27)
     display.pixel(22,27)
 
-# opening menu screen, here you choose whether you want to track stats for Corp or Runner
+# Opening menu screen, here you choose whether you want to track stats for corp or runner
 def main_menu():
     if ident == 2:
         display.set_pen(blue)
@@ -610,63 +670,57 @@ def main_menu():
         display.text("OR", 101, 60, 240, 4)
         display.set_pen(red)
         display.text("RUNNER", 53, 100, 240, 4)
-        #display.set_led(255,0,0) # Set the LED to bright red
-        #utime.sleep(1) # Wait for 1 second
-        #display.set_led(0,255,0) # Set the LED to bright green
-        #utime.sleep(1) # Wait for 1 second
-        #display.set_led(0,0,255) # Set the LED to bright blue
-        #utime.sleep(1) # Wait for 1 second
-        if display.is_pressed(display.BUTTON_A):
+        if button_a.button_just_released():
             set_corp()
-        if display.is_pressed(display.BUTTON_X):
+        if button_x.button_just_released():
             set_corp()
-        if display.is_pressed(display.BUTTON_B):
+        if button_b.button_just_released():
             set_runner()
-        if display.is_pressed(display.BUTTON_Y):
+        if button_y.button_just_released():
             set_runner()
 
-# after the menu screen you are asked which ident you are using, this will inform the pen and RGB colour
+# After the menu screen you are asked which ident you are using, this will inform the pen and LED colour
 def ident_select():
     if submenu == 1:
         if ident == 0:
-            display.set_pen(SHPR)
+            display.set_pen(shaper)
             display.text("Shaper", 10, 10, 240, 3)
-            display.set_pen(ANAR)
+            display.set_pen(anarch)
             display.text("Anarch", 140, 10, 240, 3)
-            display.set_pen(CRIM)
+            display.set_pen(criminal)
             display.text("Criminal", 10, 110, 240, 3)
-            if display.is_pressed(display.BUTTON_A):
-                set_SHPR()
-            if display.is_pressed(display.BUTTON_B):
-                set_CRIM()
-            if display.is_pressed(display.BUTTON_X):
-                set_ANAR()
+            if button_a.button_just_released():
+                set_shaper()
+            if button_b.button_just_released():
+                set_criminal()
+            if button_x.button_just_released():
+                set_anarch()
         elif ident == 1:
             display.set_pen(HB)
             display.text("HB", 10, 10, 240, 3)
-            display.set_pen(JNTK)
+            display.set_pen(jinteki)
             display.text("Jinteki", 130, 10, 240, 3)
             display.set_pen(NBN)
             display.text("NBN", 10, 110, 240, 3)
-            display.set_pen(WLND)
+            display.set_pen(weyland)
             display.text("Weyland", 124, 110, 240, 3)
-            if display.is_pressed(display.BUTTON_A):
+            if button_a.button_just_released():
                 set_HB()
-            if display.is_pressed(display.BUTTON_B):
+            if button_b.button_just_released():
                 set_NBN()
-            if display.is_pressed(display.BUTTON_X):
-                set_JNTK()
-            if display.is_pressed(display.BUTTON_Y):
-                set_WLND()
+            if button_x.button_just_released():
+                set_jinteki()
+            if button_y.button_just_released():
+                set_weyland()
 
-# the screen a runner sees
+# The screen a runner sees
 def runner_menu():
     if ident == 0 and submenu == 0:
-        if display.is_pressed(display.BUTTON_A):
+        if button_a.button_just_released():
             cycle_down_selector()
-        if display.is_pressed(display.BUTTON_B):
+        if button_b.button_just_released():
             cycle_up_selector()
-        if display.is_pressed(display.BUTTON_X):
+        if button_x.button_just_released():
             clear()
             if selector == 0:
                 runner_increment_click()
@@ -679,7 +733,7 @@ def runner_menu():
                 increment_bad_publicity()
             if selector == 3:
                 increment_brain_damage()
-        if display.is_pressed(display.BUTTON_Y):
+        if button_y.button_just_released():
             clear()
             if selector == 0:
                 runner_decrement_click()
@@ -738,16 +792,15 @@ def runner_menu():
                 set_ident_pen()
                 brain_damage()
                 display.text("{}".format(runner["Brain Damage"]), 50, 106, 240,3)
-        # utime.sleep(0.1)
 
-# the screen a corp sees
+# The screen a corp sees
 def corp_menu():
     if ident == 1 and submenu == 0:
-        if display.is_pressed(display.BUTTON_A):
+        if button_a.button_just_released():
             cycle_down_selector()
-        if display.is_pressed(display.BUTTON_B):
+        if button_b.button_just_released():
             cycle_up_selector()
-        if display.is_pressed(display.BUTTON_X):
+        if button_x.button_just_released():
             clear()
             if selector == 0:
                 runner_increment_click()
@@ -760,7 +813,7 @@ def corp_menu():
                 increment_bad_publicity()
             if selector == 3:
                 increment_brain_damage()
-        if display.is_pressed(display.BUTTON_Y):
+        if button_y.button_just_released():
             clear()
             if selector == 0:
                 runner_decrement_click()
@@ -801,27 +854,35 @@ def corp_menu():
             set_ident_pen()
             bad_publicity()
             display.text("{}".format(corp["Bad Publicity"]), 60, 103, 240, 3)
-        # utime.sleep(0.1)
 
-#render loop
+# Render loop
 def renderloop():
     global current_time
     new_time = utime.ticks_ms()
+    
+    button_a.update_button_state()
+    button_b.update_button_state()
+    button_x.update_button_state()
+    button_y.update_button_state()
+
     if ((new_time - current_time) >= (1000/frame_rate)):
         current_time = new_time
-        #do something cool here
-        print("CLOCK")
 
-#the code!!
+# Updates the display
+def update():
+    display.update()
 
-#start with a blank slate
+
+# The main code!!
+
+# Clear the screen to start with a blank slate
 clear()
 
-#main loop
+# Main loop
 while True:
     renderloop()
-    main_menu()
-    ident_select()
-    runner_menu()
     corp_menu()
-    display.update()
+    runner_menu()
+    ident_select()
+    main_menu()
+    update()
